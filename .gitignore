@@ -1,0 +1,28 @@
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Secret environment variables
+.env
+
+# Streamlit settings
+.streamlit/
+
+# Local databases
+*.db
+
+# Test cache
+.pytest_cache/
+
+# Private uploaded documents
+documents/*.pdf
+
+# Editor and operating-system files
+.vscode/
+.DS_Store
+Thumbs.db
