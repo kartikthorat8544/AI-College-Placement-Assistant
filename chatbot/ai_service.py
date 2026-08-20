@@ -1,25 +1,45 @@
 import os
 import time
 
+import streamlit as st
 from dotenv import load_dotenv
 from google import genai
 
 
 load_dotenv(override=True)
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 MODEL_NAME = "gemini-3.6-flash"
 MAX_RETRIES = 3
 
 
+def get_gemini_api_key():
+    local_api_key = os.getenv("GEMINI_API_KEY")
+
+    if local_api_key:
+        return local_api_key
+
+    try:
+        cloud_api_key = st.secrets.get("GEMINI_API_KEY")
+
+        if cloud_api_key:
+            return cloud_api_key
+
+    except Exception:
+        pass
+
+    return None
+
+
 def send_prompt_to_gemini(prompt):
-    if not GEMINI_API_KEY:
+    gemini_api_key = get_gemini_api_key()
+
+    if not gemini_api_key:
         return (
-            "Gemini API key is missing. "
-            "Please configure GEMINI_API_KEY in the .env file."
+            "Gemini API key is missing. Configure GEMINI_API_KEY "
+            "in .env locally or Streamlit Secrets online."
         )
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = genai.Client(api_key=gemini_api_key)
 
     for attempt in range(MAX_RETRIES):
         try:
