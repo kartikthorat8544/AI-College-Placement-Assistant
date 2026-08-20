@@ -1,4 +1,7 @@
+import os
+
 import streamlit as st
+from dotenv import load_dotenv
 
 from chatbot.ai_service import generate_document_response
 from chatbot.chatbot import get_response
@@ -12,12 +15,37 @@ from rag.document_processor import process_pdf
 from rag.retriever import retrieve_relevant_chunks
 
 
+load_dotenv(override=True)
+
+WELCOME_MESSAGE = (
+    "Hello! How can I help with your placement preparation?"
+)
+
+
+def get_config_value(name, default=None):
+    environment_value = os.getenv(name)
+
+    if environment_value is not None:
+        return environment_value
+
+    try:
+        return st.secrets.get(name, default)
+    except Exception:
+        return default
+
+
+persistent_history_enabled = str(
+    get_config_value("PERSIST_CHAT_HISTORY", "false")
+).strip().lower() == "true"
+
+
 st.set_page_config(
     page_title="AI Placement Assistant",
     page_icon="🤖"
 )
 
-initialize_database()
+if persistent_history_enabled:
+    initialize_database()
 
 st.title("🤖 AI College and Placement Assistant")
 st.write(
@@ -26,7 +54,10 @@ st.write(
 )
 
 if "messages" not in st.session_state:
-    saved_messages = get_messages()
+    if persistent_history_enabled:
+        saved_messages = get_messages()
+    else:
+        saved_messages = []
 
     if saved_messages:
         st.session_state.messages = saved_messages
@@ -34,10 +65,7 @@ if "messages" not in st.session_state:
         st.session_state.messages = [
             {
                 "role": "assistant",
-                "content": (
-                    "Hello! How can I help with your "
-                    "placement preparation?"
-                )
+                "content": WELCOME_MESSAGE
             }
         ]
 
@@ -53,6 +81,13 @@ if "document_name" not in st.session_state:
 
 with st.sidebar:
     st.header("Document Question Answering")
+
+    if persistent_history_enabled:
+        st.caption("Conversation history: saved locally")
+    else:
+        st.caption(
+            "Conversation history: private to this browser session"
+        )
 
     uploaded_pdf = st.file_uploader(
         "Upload a PDF",
@@ -107,15 +142,13 @@ with st.sidebar:
 
 
 if st.button("Clear conversation"):
-    clear_messages()
+    if persistent_history_enabled:
+        clear_messages()
 
     st.session_state.messages = [
         {
             "role": "assistant",
-            "content": (
-                "Hello! How can I help with your "
-                "placement preparation?"
-            )
+            "content": WELCOME_MESSAGE
         }
     ]
 
@@ -136,7 +169,9 @@ if user_message:
     }
 
     st.session_state.messages.append(user_data)
-    save_message("user", user_message)
+
+    if persistent_history_enabled:
+        save_message("user", user_message)
 
     with st.chat_message("user"):
         st.write(user_message)
@@ -153,7 +188,6 @@ if user_message:
                     user_message,
                     relevant_chunks
                 )
-
             else:
                 chatbot_response = get_response(user_message)
 
@@ -165,4 +199,6 @@ if user_message:
     }
 
     st.session_state.messages.append(assistant_data)
-    save_message("assistant", chatbot_response)
+
+    if persistent_history_enabled:
+        save_message("assistant", chatbot_response)
